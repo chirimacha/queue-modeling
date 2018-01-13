@@ -4,7 +4,7 @@
 # alpha - rate of infection in attack zone
 # c - participation rate
 # p - prevalence of infection
-alpha <- 150
+alpha <- 27
 c <- 0.10
 p <- 0.20 
 

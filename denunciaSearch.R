@@ -3,7 +3,7 @@
 
 #set directory
 #setwd("~/queue-modeling/")    #for Mike
-setwd("/Users/patrickemedom/Desktop/denuncia/")   #for Patrick
+setwd("~/Desktop/Levy Lab/queue-modeling")   #for Patrick
 
 inspecciones <- data.frame(read.csv("inspecciones - INSPECCIONES.csv"))
 #inspecciones <- data.frame(read.csv("rociado - ROCIADO.csv"))
@@ -128,10 +128,13 @@ valTable <- c()
 for (i in denunNo) { 
   valTable <- rbind(valTable, c(i, countPValue(i, "P1"), countPValue(i, "P2"), 
                                 countMaxBugs(i), denunciaDate(i, "DIA"),
-                                denunciaDate(i, "MES"), denunciaDate(i, "ANIO")))
+                                denunciaDate(i, "MES"), denunciaDate(i, "ANIO"), countCompleta(i, "INSP_COMPLETA")))
 }
 
 colnames(valTable) <- c("NRO_DENUNCIA", "P1", "P2", "Total Bug Count", "DIA",
-                        "MES", "ANIO")
+                        "MES", "ANIO", "INSPCOMPLETA")
 valTable.df <- data.frame(valTable)
 print(valTable.df)
+
+hist(as.numeric(valTable.df$P1))
+hist(as.numeric(valTable.df$P2))

@@ -1,11 +1,12 @@
-#  Simulation of a Single Server Queue with Redispersion 
-#  Feb 21, 2017 
+#  Simulation of a Single Server Queue with Redispersion with Thinning Algorithm 
+#  June 20, 2017 
 
 #  Input
 
 #  alpha.prime - external arrival rate
 #  beta - vector of redispersion rates
 #  mu - service rate
+#  delta - maximum arrival rate (max(lambda(t) = alphaPrime + beta))
 #  target.no.cust - simulation will produce that many customers going through the system
 
 #  Variables
@@ -54,10 +55,11 @@ timeVec <- c()
 avgBeta <- 0
 
 # Parameters 
-alpha.prime <- 33
+alpha.prime <- 25
 mu <- 40
-target.no.customers <- 20000
-warmup.no.cust <- 15000
+target.no.customers <- 10
+warmup.no.cust <- 1
+delta <- 100
 
 customer.arrival <- c()
 customer.total.time <- c()
@@ -89,6 +91,41 @@ redispersionLogis <- function(arrivalTimeVec, currTime) {
   return(sumInfestivity)
 }
 
+#################### Thinning Algorithm ###################
+thinning <- function(currTime, servTime) {
+  
+  # Generate random number 
+  uniRandom <- runif(1, 0, 1)
+  
+  futureArrivalTime <- currTime + ( (-1/delta) * log(uniRandom))
+  if (futureArrivalTime > servTime) {
+    # save curr.time, load, and redispersion 
+    
+    
+    return(futureArrivalTime)
+  }
+  
+  # Generate second random number 
+  uniRandomTwo <- runif(1, 0, 1)
+  
+  # obtain arrival rate
+  lambda <- alpha.prime + redispersionLogis(custRemainArr, futureArrivalTime)
+  if (uniRandomTwo <= (lambda/delta)) {
+    
+    # save curr.time, load, and redispersion 
+    
+    
+    return(futureArrivalTime)
+  }
+  else {
+    
+    # save curr.time, load, and redispersion 
+    
+    
+    return(thinning(futureArrivalTime, servTime))
+  }
+}
+
 ################## WARM UP PERIOD START ######################
 
 #  Create first arrival
@@ -111,7 +148,7 @@ while (n <= warmup.no.cust) {
     custRemainArr[length(custRemainArr) + 1] <- next.arr ##
     
     # calculate avg number of customers in the system
-    # avg.no.in.system <- avg.no.in.system + ((next.arr - time) * no.in.system)
+    avg.no.in.system <- avg.no.in.system + ((next.arr - time) * no.in.system)
     
     no.in.system <- 1
     
@@ -137,8 +174,8 @@ while (n <= warmup.no.cust) {
     # calculate average beta as func of time 
     avgBeta <- avgBeta + ((next.arr - time) * redisVect[m])
     
-    # Generate next interarrival time
-    next.arr <- new.time + rexp(1, current.rate)  
+    # Generate next interarrival time via THINNING
+    next.arr <- thinning(new.time, next.serv)
     
     # update the arrival rate vector 
     current.rate.v[n] <- current.rate
@@ -188,8 +225,8 @@ while (n <= warmup.no.cust) {
       # calculate average beta as func of time 
       avgBeta <- avgBeta + ((next.arr - time) * redisVect[m])
       
-      # Generate next interarrival time
-      next.arr <- new.time + rexp(1, current.rate) 
+      # Generate next interarrival time via THINNING
+      next.arr <- thinning(new.time, next.serv) 
       
       # update the arrival rate vector 
       current.rate.v[n] <- current.rate
@@ -203,7 +240,7 @@ while (n <= warmup.no.cust) {
     
     #  the next event is a departure
     else {
-  
+      
       # update simulation clock
       new.time <- departures[1] 
       
@@ -221,7 +258,7 @@ while (n <= warmup.no.cust) {
       n <- n + 1
       
       customer.total.time[n] <- new.time - customer.arrival[n]
-  
+      
       # remove arrive time of service customer 
       custRemainArr <- custRemainArr[-c(1)] 
       
@@ -239,7 +276,7 @@ while (n <= warmup.no.cust) {
   
   timeVec[m] <- new.time
   time <- new.time
-
+  
 }
 
 ################## WARM UP PERIOD END ######################
@@ -294,8 +331,8 @@ while (n <= target.no.customers) {
     # calculate average beta as func of time 
     avgBeta <- avgBeta + ((next.arr - time) * redisVect[m])
     
-    # Generate next interarrival time
-    next.arr <- new.time + rexp(1, current.rate)  
+    # Generate next interarrival time via THINNING
+    next.arr <- thinning(new.time, next.serv)
     
     # update the arrival rate vector 
     current.rate.v[n] <- current.rate
@@ -345,8 +382,8 @@ while (n <= target.no.customers) {
       # calculate average beta as func of time 
       avgBeta <- avgBeta + ((next.arr - time) * redisVect[m])
       
-      # Generate next interarrival time
-      next.arr <- new.time + rexp(1, current.rate) 
+      # Generate next interarrival time via THINNING
+      next.arr <- thinning(new.time, next.serv)
       
       # update the arrival rate vector 
       current.rate.v[n] <- current.rate
@@ -418,12 +455,14 @@ hist(redisVect[warmup.no.cust:target.no.customers],
 )
 
 # plots of redispersion as a function of virtual wait 
+if (FALSE) {
 hist(redisVirtual,
      main = paste("Distribution of Redispersion Rates - Virtual Wait" ),
      xlab = "Redispersion Rates",
      col = "black",
      border = "Red"
 )
+}
 
 info <- c(avg.no.in.system / (time - end.warmup), mean(customer.total.time[warmup.no.cust:target.no.customers]), 
           mean(redisVect[warmup.no.cust:target.no.customers]), avgBeta/(time - end.warmup))
@@ -445,7 +484,12 @@ plot(timeVec[warmup.no.cust:target.no.customers], load[warmup.no.cust:target.no.
 plot(load[warmup.no.cust:target.no.customers], redisVect[warmup.no.cust:target.no.customers], 
      xlab = "Load", ylab = "Redispersion", type = "p")
 
+# number of customers as a function of time 
+barplot(timeVec[warmup.no.cust:target.no.customers], numCustSyst[warmup.no.cust:target.no.customers], 
+     xlab = "Time", ylab = "No. of Cust", type = "p")
 ##################### RUN SimApproxBetaApril19 with parameters #######################
+
+if (FALSE) {
 
 # plot the approximate beta 
 plot(timeVec[warmup.no.cust:target.no.customers], 
@@ -472,3 +516,4 @@ plot(timeVec[warmup.no.cust:target.no.customers],
      diffBeta[warmup.no.cust:target.no.customers], xlab = "Time", ylab = "Difference", 
      type = "l")
 
+}
